@@ -161,6 +161,9 @@ local lastFriendlyHealthPercentage = 0;
 local recentlySelectedPlayers = {};
 local elapsedTime = 0;
 
+-- Map combat log events to their parsing functions.
+local combatEventMap = {}
+
 
 -------------------------------------------------------------------------------------
 -- Core event handlers.
@@ -362,132 +365,10 @@ end
 -- This function parses the chat message combat events.
 -- **********************************************************************************
 function MikCEH.ParseCombatEvents(event, combatMessage)
- -- Incoming Melee Hits/Crits
- if (event == "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS" or
-     event == "CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS" or 
-     event == "CHAT_MSG_COMBAT_PARTY_HITS") then
-  MikCEH.ParseForIncomingHits(combatMessage);
-
- -- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
- elseif (event == "CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES" or
-         event == "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES" or
-         event == "CHAT_MSG_COMBAT_PARTY_MISSES") then
-  MikCEH.ParseForIncomingMisses(combatMessage);
-
- -- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
- elseif (event == "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE" or
-         event == "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE" or
-         event == "CHAT_MSG_SPELL_PARTY_DAMAGE") then
-   MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage);
-   MikCEH.ParseForPowerLosses(combatMessage);
-
- -- Incoming damage from shields
- elseif (event == "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS") then
-  MikCEH.ParseForIncomingDamageShieldDamage(combatMessage);
-
- -- Incoming Heals
- elseif (event == "CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF" or
-         event == "CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF") then
-  MikCEH.ParseForIncomingSpellHeals(combatMessage);
-
- -- Incoming Debuffs, DoTs, Power Gains
- elseif (event == "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE") then
-  MikCEH.ParseForIncomingDebuffs(combatMessage);
-  MikCEH.ParseForPowerGains(combatMessage);
-  
-		 -- event == "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS" or
-		 -- event == "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS" or
-		 -- event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS")
-		 -- Athene: one of these may be powergains, need to check later
-  
- -- Incoming Buffs, HoTs, Power Gains
- elseif (event == "CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS") then
-  if (not MikCEH.ParseForIncomingSpellHeals(combatMessage)) then
-   MikCEH.ParseForIncomingBuffs(combatMessage);
-   MikCEH.ParseForOutgoingHoTs(combatMessage);
+  local func = combatEventMap[event]
+  if func then
+    func(combatMessage)
   end
-
-
-
- -- Outgoing Melee Hits/Crits, Environmental Damage
- elseif (event == "CHAT_MSG_COMBAT_SELF_HITS") then
-  if (not MikCEH.ParseForEnvironmentalDamage(combatMessage)) then
-   MikCEH.ParseForOutgoingHits(combatMessage);
-  end
-
- -- Outgoing Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes, Evades
- elseif (event == "CHAT_MSG_COMBAT_SELF_MISSES") then
-  MikCEH.ParseForOutgoingMisses(combatMessage);
-
- -- Outgoing Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
- elseif (event == "CHAT_MSG_SPELL_SELF_DAMAGE") then
-  MikCEH.ParseForOutgoingSpellHitsAndMisses(combatMessage);
-
- -- Outgoing damage from shields
- elseif (event == "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF") then
-  MikCEH.ParseForOutgoingDamageShieldDamage(combatMessage);
-
- -- Outgoing Heals, Power Gains, Dispel/Purge Resists
- elseif (event == "CHAT_MSG_SPELL_SELF_BUFF") then
-  if (not MikCEH.ParseForPowerGains(combatMessage)) then
-   MikCEH.ParseForOutgoingSpellHeals(combatMessage);
-   MikCEH.ParseForOutgoingDispelResists(combatMessage);
-  end
-
- -- Outgoing HoTs
- elseif (event == "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS" or
-         event == "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS") then
-  MikCEH.ParseForOutgoingHoTs(combatMessage);
-
- -- Outgoing DoTs, Power Losses
- elseif (event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" or
-         event == "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE") then
-   MikCEH.ParseForOutgoingDoTs(combatMessage);
-   MikCEH.ParseForPowerLosses(combatMessage);
-
- -- Outgoing Pet Hits/Crits
- elseif (event == "CHAT_MSG_COMBAT_PET_HITS") then
-  MikCEH.ParseForOutgoingPetHits(combatMessage);
-
- -- Outgoing Pet Melee Misses
- elseif(event == "CHAT_MSG_COMBAT_PET_MISSES") then
-  MikCEH.ParseForOutgoingPetMisses(combatMessage);
-
- -- Outgoing Pet Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
- elseif(event == "CHAT_MSG_SPELL_PET_DAMAGE") then
-  MikCEH.ParseForOutgoingPetSpellHitsAndMisses(combatMessage);
- 
-
-
- -- Item Buffs
- elseif (event == "CHAT_MSG_SPELL_ITEM_ENCHANTMENTS") then
-  MikCEH.ParseForIncomingItemBuffs(combatMessage);
-
- -- Buff Fades
- elseif (event == "CHAT_MSG_SPELL_AURA_GONE_SELF") then
-  MikCEH.ParseForBuffFades(combatMessage);
-
- -- Honor Gains
- elseif (event == "CHAT_MSG_COMBAT_HONOR_GAIN") then
-  MikCEH.ParseForHonorGains(combatMessage);
-
- -- Reputation Gains/Losses
- elseif (event == "CHAT_MSG_COMBAT_FACTION_CHANGE") then
-  MikCEH.ParseForReputationGainsAndLosses(combatMessage);
-
- -- Skill Gains
- elseif (event == "CHAT_MSG_SKILL") then
-  MikCEH.ParseForSkillGains(combatMessage);
-
- -- Experience Gains
- elseif (event == "CHAT_MSG_COMBAT_XP_GAIN") then
-  MikCEH.ParseForExperienceGains(combatMessage);
-
- -- Killing Blows
- elseif (event == "CHAT_MSG_COMBAT_HOSTILE_DEATH") then
-  MikCEH.ParseForKillingBlows(combatMessage);
-
- end
 end
 
 
@@ -495,9 +376,76 @@ end
 -- Called when the helper is fully loaded.
 -- **********************************************************************************
 function MikCEH.Init()
- -- Get the name of the player and the player's class.
- playerName = UnitName("player");
- _, playerClass = UnitClass("player");
+  -- Get the name of the player and the player's class.
+  playerName = UnitName("player");
+  _, playerClass = UnitClass("player");
+  MikCEH.InitCombatEventMap();
+end
+
+-- *****************************************************************************
+-- Builds a lookup table for combat log events to minimize string comparisons.
+-- *****************************************************************************
+function MikCEH.InitCombatEventMap()
+  local assign = function(events, func)
+    for _, e in ipairs(events) do
+      combatEventMap[e] = func
+    end
+  end
+
+  local function incomingSpellDamage(msg)
+    MikCEH.ParseForIncomingSpellHitsAndMisses(msg)
+    MikCEH.ParseForPowerLosses(msg)
+  end
+
+  local function periodicSelfBuffs(msg)
+    if (not MikCEH.ParseForIncomingSpellHeals(msg)) then
+      MikCEH.ParseForIncomingBuffs(msg)
+      MikCEH.ParseForOutgoingHoTs(msg)
+    end
+  end
+
+  local function selfHits(msg)
+    if (not MikCEH.ParseForEnvironmentalDamage(msg)) then
+      MikCEH.ParseForOutgoingHits(msg)
+    end
+  end
+
+  local function selfBuff(msg)
+    if (not MikCEH.ParseForPowerGains(msg)) then
+      MikCEH.ParseForOutgoingSpellHeals(msg)
+      MikCEH.ParseForOutgoingDispelResists(msg)
+    end
+  end
+
+  local function outgoingDoTs(msg)
+    MikCEH.ParseForOutgoingDoTs(msg)
+    MikCEH.ParseForPowerLosses(msg)
+  end
+
+  assign({"CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS", "CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS", "CHAT_MSG_COMBAT_PARTY_HITS"}, MikCEH.ParseForIncomingHits)
+  assign({"CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES", "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES", "CHAT_MSG_COMBAT_PARTY_MISSES"}, MikCEH.ParseForIncomingMisses)
+  assign({"CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE", "CHAT_MSG_SPELL_PARTY_DAMAGE"}, incomingSpellDamage)
+  assign({"CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS"}, MikCEH.ParseForIncomingDamageShieldDamage)
+  assign({"CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF", "CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF"}, MikCEH.ParseForIncomingSpellHeals)
+  assign({"CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE"}, function(msg) MikCEH.ParseForIncomingDebuffs(msg); MikCEH.ParseForPowerGains(msg); end)
+  assign({"CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS"}, periodicSelfBuffs)
+  assign({"CHAT_MSG_COMBAT_SELF_HITS"}, selfHits)
+  assign({"CHAT_MSG_COMBAT_SELF_MISSES"}, MikCEH.ParseForOutgoingMisses)
+  assign({"CHAT_MSG_SPELL_SELF_DAMAGE"}, MikCEH.ParseForOutgoingSpellHitsAndMisses)
+  assign({"CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF"}, MikCEH.ParseForOutgoingDamageShieldDamage)
+  assign({"CHAT_MSG_SPELL_SELF_BUFF"}, selfBuff)
+  assign({"CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS", "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS"}, MikCEH.ParseForOutgoingHoTs)
+  assign({"CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE"}, outgoingDoTs)
+  assign({"CHAT_MSG_COMBAT_PET_HITS"}, MikCEH.ParseForOutgoingPetHits)
+  assign({"CHAT_MSG_COMBAT_PET_MISSES"}, MikCEH.ParseForOutgoingPetMisses)
+  assign({"CHAT_MSG_SPELL_PET_DAMAGE"}, MikCEH.ParseForOutgoingPetSpellHitsAndMisses)
+  assign({"CHAT_MSG_SPELL_ITEM_ENCHANTMENTS"}, MikCEH.ParseForIncomingItemBuffs)
+  assign({"CHAT_MSG_SPELL_AURA_GONE_SELF"}, MikCEH.ParseForBuffFades)
+  assign({"CHAT_MSG_COMBAT_HONOR_GAIN"}, MikCEH.ParseForHonorGains)
+  assign({"CHAT_MSG_COMBAT_FACTION_CHANGE"}, MikCEH.ParseForReputationGainsAndLosses)
+  assign({"CHAT_MSG_SKILL"}, MikCEH.ParseForSkillGains)
+  assign({"CHAT_MSG_COMBAT_XP_GAIN"}, MikCEH.ParseForExperienceGains)
+  assign({"CHAT_MSG_COMBAT_HOSTILE_DEATH"}, MikCEH.ParseForKillingBlows)
 end
 
 
