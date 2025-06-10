@@ -164,6 +164,13 @@ local elapsedTime = 0;
 -- Map combat log events to their parsing functions.
 local combatEventMap = {}
 
+-- Locally cache frequently used functions to minimize global lookups.
+local strfind, strgfind = string.find, string.gfind
+local tinsert, tgetn, tsetn = table.insert, table.getn, table.setn
+local UnitExists, UnitIsFriend, UnitIsPlayer = UnitExists, UnitIsFriend, UnitIsPlayer
+local UnitName, UnitClass, UnitMana = UnitName, UnitClass, UnitMana
+local GetComboPoints = GetComboPoints
+
 
 -------------------------------------------------------------------------------------
 -- Core event handlers.
@@ -3395,18 +3402,20 @@ end
 -- parameters passed.
 -- **********************************************************************************
 function MikCEH.GetUnorderedCaptureDataTable(c1, c2, c3, c4, c5, c6, c7, c8, c9)
- -- Erase old unorderd capture data.
- MikCEH.EraseTable(unorderedCaptureData);
+  -- Erase old unorderd capture data.
+  MikCEH.EraseTable(unorderedCaptureData);
 
- if (c1 ~= nil) then table.insert(unorderedCaptureData, c1); end
- if (c2 ~= nil) then table.insert(unorderedCaptureData, c2); end
- if (c3 ~= nil) then table.insert(unorderedCaptureData, c3); end
- if (c4 ~= nil) then table.insert(unorderedCaptureData, c4); end
- if (c5 ~= nil) then table.insert(unorderedCaptureData, c5); end
- if (c6 ~= nil) then table.insert(unorderedCaptureData, c6); end
- if (c7 ~= nil) then table.insert(unorderedCaptureData, c7); end
- if (c8 ~= nil) then table.insert(unorderedCaptureData, c8); end
- if (c9 ~= nil) then table.insert(unorderedCaptureData, c9); end
+  local idx = 1
+  if (c1 ~= nil) then unorderedCaptureData[idx] = c1; idx = idx + 1 end
+  if (c2 ~= nil) then unorderedCaptureData[idx] = c2; idx = idx + 1 end
+  if (c3 ~= nil) then unorderedCaptureData[idx] = c3; idx = idx + 1 end
+  if (c4 ~= nil) then unorderedCaptureData[idx] = c4; idx = idx + 1 end
+  if (c5 ~= nil) then unorderedCaptureData[idx] = c5; idx = idx + 1 end
+  if (c6 ~= nil) then unorderedCaptureData[idx] = c6; idx = idx + 1 end
+  if (c7 ~= nil) then unorderedCaptureData[idx] = c7; idx = idx + 1 end
+  if (c8 ~= nil) then unorderedCaptureData[idx] = c8; idx = idx + 1 end
+  if (c9 ~= nil) then unorderedCaptureData[idx] = c9; idx = idx + 1 end
+  tsetn(unorderedCaptureData, idx - 1)
 
  -- Return the populated unordered capture data table.
  return unorderedCaptureData;
