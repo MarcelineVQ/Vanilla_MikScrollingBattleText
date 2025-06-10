@@ -187,10 +187,10 @@ end
 -- Registers all of the events the helper is interested in.
 -- **********************************************************************************
 function MikCEH.RegisterEvents()
- -- Register the events we are interested in receiving.
- for k, v in listenEvents do
-  MCEHEventFrame:RegisterEvent(v);
- end 
+  -- Register the events we are interested in receiving.
+  for i = 1, tgetn(listenEvents) do
+    MCEHEventFrame:RegisterEvent(listenEvents[i])
+  end
 end
 
 
@@ -198,10 +198,10 @@ end
 -- Unregisters all of the event the helper registered for.
 -- **********************************************************************************
 function MikCEH.UnregisterEvents()
- -- Register the events we are interested in receiving.
- for k, v in listenEvents do
-  MCEHEventFrame:UnregisterEvent(v);
- end 
+  -- Unregister the events we previously registered for.
+  for i = 1, tgetn(listenEvents) do
+    MCEHEventFrame:UnregisterEvent(listenEvents[i])
+  end
 end
 
 
@@ -212,7 +212,7 @@ function MikCEH.OnLoad()
  -- Load up the listen events table with the events the helper is interested in.
  tinsert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS");		-- Incoming Melee Hits/Crits
  tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS");		-- Incoming Melee Hits/Crits
- tinsert(listenEvents, "CHAT_MSG_COMBAT_PARTY_HITS");				-- Incoming Melee Hits/Crits
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_PARTY_HITS");				-- Incoming Melee Hits/Crits 
  tinsert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES"); 	-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
  tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES");		-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
  tinsert(listenEvents, "CHAT_MSG_COMBAT_PARTY_MISSES");			-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
@@ -241,21 +241,21 @@ function MikCEH.OnLoad()
  tinsert(listenEvents, "CHAT_MSG_SPELL_PET_DAMAGE");				-- Outgoing Pet Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
 
  tinsert(listenEvents, "CHAT_MSG_SPELL_ITEM_ENCHANTMENTS");			-- Item Buffs
-  if event == "ADDON_LOADED" then
-    if arg1 == MikSBT.MOD_NAME then
-      this:UnregisterEvent("ADDON_LOADED")
-      MikCEH.RegisterEvents()
-      MikCEH.Init()
-    end
-    return
+ tinsert(listenEvents, "CHAT_MSG_SPELL_AURA_GONE_SELF");			-- Buff Fades
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HONOR_GAIN");				-- Honor Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_FACTION_CHANGE");			-- Reputation Gains/Losses
+ tinsert(listenEvents, "CHAT_MSG_SKILL");						-- Skill Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_XP_GAIN");				-- Experience Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILE_DEATH");			-- Killing Blows
+-- tinsert(listenEvents, "CHAT_MSG_SYSTEM");					-- Created Items
 
-  local handler = onEventMap[event]
-  if handler then
-    handler()
-  else
-    MikCEH.ParseSearchPatternTriggers(event, arg1)
-    MikCEH.ParseCombatEvents(event, arg1)
-  MikCEH.InitOnEventMap();
+ tinsert(listenEvents, "PLAYER_REGEN_ENABLED");					-- Leave Combat
+ tinsert(listenEvents, "PLAYER_REGEN_DISABLED");					-- Enter Combat
+ tinsert(listenEvents, "PLAYER_COMBO_POINTS");					-- Combo Point Gains
+ tinsert(listenEvents, "UNIT_HEALTH");						-- Health changes.
+ tinsert(listenEvents, "UNIT_MANA");							-- Mana changes.
+
+ tinsert(listenEvents, "PLAYER_TARGET_CHANGED");					-- Target changes.
   elseif (arg1 == "pet") then
    MikCEH.ParsePetHealthTriggers();
   end
