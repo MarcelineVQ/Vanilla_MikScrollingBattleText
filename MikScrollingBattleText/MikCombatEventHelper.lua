@@ -161,6 +161,23 @@ local lastFriendlyHealthPercentage = 0;
 local recentlySelectedPlayers = {};
 local elapsedTime = 0;
 
+-- Map combat log events to their parsing functions.
+local combatEventMap = {}
+local onEventMap = {}
+
+-- Locally cache frequently used functions to minimize global lookups.
+local strfind, strgfind = string.find, string.gfind
+local tinsert, tgetn, tsetn = table.insert, table.getn, table.setn
+local UnitExists, UnitIsFriend, UnitIsPlayer = UnitExists, UnitIsFriend, UnitIsPlayer
+local UnitName, UnitClass, UnitMana = UnitName, UnitClass, UnitMana
+local GetComboPoints = GetComboPoints
+
+-- Determine if the player's pet is referenced in the given message.
+local function PetNameInMessage(msg)
+  local petName = UnitName("pet")
+  return petName and strfind(msg, petName)
+end
+
 
 -------------------------------------------------------------------------------------
 -- Core event handlers.
@@ -170,10 +187,10 @@ local elapsedTime = 0;
 -- Registers all of the events the helper is interested in.
 -- **********************************************************************************
 function MikCEH.RegisterEvents()
- -- Register the events we are interested in receiving.
- for k, v in listenEvents do
-  MCEHEventFrame:RegisterEvent(v);
- end 
+  -- Register the events we are interested in receiving.
+  for i = 1, tgetn(listenEvents) do
+    MCEHEventFrame:RegisterEvent(listenEvents[i])
+  end
 end
 
 
@@ -181,10 +198,10 @@ end
 -- Unregisters all of the event the helper registered for.
 -- **********************************************************************************
 function MikCEH.UnregisterEvents()
- -- Register the events we are interested in receiving.
- for k, v in listenEvents do
-  MCEHEventFrame:UnregisterEvent(v);
- end 
+  -- Unregister the events we previously registered for.
+  for i = 1, tgetn(listenEvents) do
+    MCEHEventFrame:UnregisterEvent(listenEvents[i])
+  end
 end
 
 
@@ -193,52 +210,52 @@ end
 -- **********************************************************************************
 function MikCEH.OnLoad()
  -- Load up the listen events table with the events the helper is interested in.
- table.insert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS");		-- Incoming Melee Hits/Crits
- table.insert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS");		-- Incoming Melee Hits/Crits
- table.insert(listenEvents, "CHAT_MSG_COMBAT_PARTY_HITS");				-- Incoming Melee Hits/Crits 
- table.insert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES"); 	-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
- table.insert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES");		-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
- table.insert(listenEvents, "CHAT_MSG_COMBAT_PARTY_MISSES");			-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
- table.insert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
- table.insert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses -- athenne add
- table.insert(listenEvents, "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
- table.insert(listenEvents, "CHAT_MSG_SPELL_PARTY_DAMAGE");				-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
- table.insert(listenEvents, "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS");		-- Incoming damage from shields
- table.insert(listenEvents, "CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF");			-- Incoming Heals
- table.insert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF");		-- Incoming Heals
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");		-- Incoming Debuffs, DoTs, Power Gains
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS");		-- Incoming Buffs, HoTs, Power Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS");		-- Incoming Melee Hits/Crits
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS");		-- Incoming Melee Hits/Crits
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_PARTY_HITS");				-- Incoming Melee Hits/Crits 
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES"); 	-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES");		-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_PARTY_MISSES");			-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
+ tinsert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
+ tinsert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses -- athenne add
+ tinsert(listenEvents, "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PARTY_DAMAGE");				-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
+ tinsert(listenEvents, "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS");		-- Incoming damage from shields
+ tinsert(listenEvents, "CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF");			-- Incoming Heals
+ tinsert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF");		-- Incoming Heals
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");		-- Incoming Debuffs, DoTs, Power Gains
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS");		-- Incoming Buffs, HoTs, Power Gains
 
- table.insert(listenEvents, "CHAT_MSG_COMBAT_SELF_HITS");				-- Outgoing Melee Hits/Crits, Environmental Damage
- table.insert(listenEvents, "CHAT_MSG_COMBAT_SELF_MISSES");  			-- Outgoing Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes, Evades
- table.insert(listenEvents, "CHAT_MSG_SPELL_SELF_DAMAGE");				-- Outgoing Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
- table.insert(listenEvents, "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF");		-- Outgoing damage from shields
- table.insert(listenEvents, "CHAT_MSG_SPELL_SELF_BUFF");				-- Outgoing Heals, Power Gains, Dispel/Purge Resists
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS");	-- Outgoing HoTs
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS");		-- Outgoing HoTs
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS");
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE");		-- Outgoing DoTs
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE");	-- Outgoing DoTs, Power Losses
- table.insert(listenEvents, "CHAT_MSG_COMBAT_PET_HITS");				-- Outgoing Pet Melee Hits/Crits
- table.insert(listenEvents, "CHAT_MSG_COMBAT_PET_MISSES");				-- Outgoing Pet Melee Misses
- table.insert(listenEvents, "CHAT_MSG_SPELL_PET_DAMAGE");				-- Outgoing Pet Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_SELF_HITS");				-- Outgoing Melee Hits/Crits, Environmental Damage
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_SELF_MISSES");  			-- Outgoing Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes, Evades
+ tinsert(listenEvents, "CHAT_MSG_SPELL_SELF_DAMAGE");				-- Outgoing Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
+ tinsert(listenEvents, "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF");		-- Outgoing damage from shields
+ tinsert(listenEvents, "CHAT_MSG_SPELL_SELF_BUFF");				-- Outgoing Heals, Power Gains, Dispel/Purge Resists
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS");	-- Outgoing HoTs
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS");		-- Outgoing HoTs
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS");
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE");		-- Outgoing DoTs
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE");	-- Outgoing DoTs, Power Losses
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_PET_HITS");				-- Outgoing Pet Melee Hits/Crits
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_PET_MISSES");				-- Outgoing Pet Melee Misses
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PET_DAMAGE");				-- Outgoing Pet Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
 
- table.insert(listenEvents, "CHAT_MSG_SPELL_ITEM_ENCHANTMENTS");			-- Item Buffs
- table.insert(listenEvents, "CHAT_MSG_SPELL_AURA_GONE_SELF");			-- Buff Fades
- table.insert(listenEvents, "CHAT_MSG_COMBAT_HONOR_GAIN");				-- Honor Gains
- table.insert(listenEvents, "CHAT_MSG_COMBAT_FACTION_CHANGE");			-- Reputation Gains/Losses
- table.insert(listenEvents, "CHAT_MSG_SKILL");						-- Skill Gains
- table.insert(listenEvents, "CHAT_MSG_COMBAT_XP_GAIN");				-- Experience Gains
- table.insert(listenEvents, "CHAT_MSG_COMBAT_HOSTILE_DEATH");			-- Killing Blows
--- table.insert(listenEvents, "CHAT_MSG_SYSTEM");					-- Created Items
+ tinsert(listenEvents, "CHAT_MSG_SPELL_ITEM_ENCHANTMENTS");			-- Item Buffs
+ tinsert(listenEvents, "CHAT_MSG_SPELL_AURA_GONE_SELF");			-- Buff Fades
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HONOR_GAIN");				-- Honor Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_FACTION_CHANGE");			-- Reputation Gains/Losses
+ tinsert(listenEvents, "CHAT_MSG_SKILL");						-- Skill Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_XP_GAIN");				-- Experience Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILE_DEATH");			-- Killing Blows
+-- tinsert(listenEvents, "CHAT_MSG_SYSTEM");					-- Created Items
 
- table.insert(listenEvents, "PLAYER_REGEN_ENABLED");					-- Leave Combat
- table.insert(listenEvents, "PLAYER_REGEN_DISABLED");					-- Enter Combat
- table.insert(listenEvents, "PLAYER_COMBO_POINTS");					-- Combo Point Gains
- table.insert(listenEvents, "UNIT_HEALTH");						-- Health changes.
- table.insert(listenEvents, "UNIT_MANA");							-- Mana changes.
+ tinsert(listenEvents, "PLAYER_REGEN_ENABLED");					-- Leave Combat
+ tinsert(listenEvents, "PLAYER_REGEN_DISABLED");					-- Enter Combat
+ tinsert(listenEvents, "PLAYER_COMBO_POINTS");					-- Combo Point Gains
+ tinsert(listenEvents, "UNIT_HEALTH");						-- Health changes.
+ tinsert(listenEvents, "UNIT_MANA");							-- Mana changes.
 
- table.insert(listenEvents, "PLAYER_TARGET_CHANGED");					-- Target changes.
+ tinsert(listenEvents, "PLAYER_TARGET_CHANGED");					-- Target changes.
 
  -- Register for the ADDON_LOADED event.
  MCEHEventFrame:RegisterEvent("ADDON_LOADED");
@@ -249,86 +266,22 @@ end
 -- Called when the events the helper registered for occur.
 -- **********************************************************************************
 function MikCEH.OnEvent()
- -- When an addon is loaded.
- if (event == "ADDON_LOADED") then
-  -- Make sure it's the right addon.
-  if (arg1 == MikSBT.MOD_NAME) then
-
-   -- Don't get notification for other addons being loaded.
-   this:UnregisterEvent("ADDON_LOADED");
-
-   -- Register for the events the helper is interested in receiving.
-   MikCEH.RegisterEvents();
-
-   -- Initialize the helper object.
-   MikCEH.Init();
+  if event == "ADDON_LOADED" then
+    if arg1 == MikSBT.MOD_NAME then
+      this:UnregisterEvent("ADDON_LOADED")
+      MikCEH.RegisterEvents()
+      MikCEH.Init()
+    end
+    return
   end
 
- -- Leave Combat
- elseif (event == "PLAYER_REGEN_ENABLED") then
-  local eventData = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_COMBAT_LEAVE, nil, nil);
-
-  -- Send the event.
-  MikCEH.SendEvent(eventData);
-
- -- Enter Combat
- elseif (event == "PLAYER_REGEN_DISABLED") then
-  local eventData = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_COMBAT_ENTER, nil, nil);
-
-  -- Send the event.
-  MikCEH.SendEvent(eventData);
-
- -- Combo Point Gains
- elseif (event == "PLAYER_COMBO_POINTS") then
-  local numCP = GetComboPoints();
-
-  -- Make sure the number of combo points is more than one.
-  if (numCP ~= 0) then
-   local eventData = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_CP_GAIN, numCP, nil);
-
-   -- Send the event.
-   MikCEH.SendEvent(eventData);
+  local handler = onEventMap[event]
+  if handler then
+    handler()
+  else
+    MikCEH.ParseSearchPatternTriggers(event, arg1)
+    MikCEH.ParseCombatEvents(event, arg1)
   end
-
- -- Health changes
- elseif (event == "UNIT_HEALTH") then
-  if (arg1 == "player") then
-   MikCEH.ParseSelfHealthTriggers();
-  elseif (arg1 == "target") then
-   -- Check if the target is an enemy.
-   if (not UnitIsFriend("player", "target")) then
-    MikCEH.ParseEnemyHealthTriggers();
-   -- Target is not an enemy.
-   else
-    MikCEH.ParseFriendlyHealthTriggers();
-   end
-  elseif (arg1 == "pet") then
-   MikCEH.ParsePetHealthTriggers();
-  end
-
- -- Mana changes
- elseif (event == "UNIT_MANA") then
-  if (arg1 == "player") then
-   MikCEH.ParseSelfManaTriggers();
-  end
-
- -- Target changes
- elseif (event == "PLAYER_TARGET_CHANGED") then
-  -- Make sure a unit is selected, is a player and is hostile.
-  if (UnitExists("target") and UnitIsPlayer("target") and not UnitIsFriend("player", "target")) then
-   -- Get the unit's name and make sure it's valid before adding it to the recently selected player's list.
-   local playerName = UnitName("target");
-   if (playerName) then
-    recentlySelectedPlayers[playerName] = 0;
-   end
-  end
-
- -- Chat message combat events.
- else
-  MikCEH.ParseSearchPatternTriggers(event, arg1);
-  MikCEH.ParseCombatEvents(event, arg1);
-
- end
 end
 
 
@@ -362,132 +315,10 @@ end
 -- This function parses the chat message combat events.
 -- **********************************************************************************
 function MikCEH.ParseCombatEvents(event, combatMessage)
- -- Incoming Melee Hits/Crits
- if (event == "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS" or
-     event == "CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS" or 
-     event == "CHAT_MSG_COMBAT_PARTY_HITS") then
-  MikCEH.ParseForIncomingHits(combatMessage);
-
- -- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
- elseif (event == "CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES" or
-         event == "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES" or
-         event == "CHAT_MSG_COMBAT_PARTY_MISSES") then
-  MikCEH.ParseForIncomingMisses(combatMessage);
-
- -- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
- elseif (event == "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE" or
-         event == "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE" or
-         event == "CHAT_MSG_SPELL_PARTY_DAMAGE") then
-   MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage);
-   MikCEH.ParseForPowerLosses(combatMessage);
-
- -- Incoming damage from shields
- elseif (event == "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS") then
-  MikCEH.ParseForIncomingDamageShieldDamage(combatMessage);
-
- -- Incoming Heals
- elseif (event == "CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF" or
-         event == "CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF") then
-  MikCEH.ParseForIncomingSpellHeals(combatMessage);
-
- -- Incoming Debuffs, DoTs, Power Gains
- elseif (event == "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE") then
-  MikCEH.ParseForIncomingDebuffs(combatMessage);
-  MikCEH.ParseForPowerGains(combatMessage);
-  
-		 -- event == "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS" or
-		 -- event == "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS" or
-		 -- event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS")
-		 -- Athene: one of these may be powergains, need to check later
-  
- -- Incoming Buffs, HoTs, Power Gains
- elseif (event == "CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS") then
-  if (not MikCEH.ParseForIncomingSpellHeals(combatMessage)) then
-   MikCEH.ParseForIncomingBuffs(combatMessage);
-   MikCEH.ParseForOutgoingHoTs(combatMessage);
+  local func = combatEventMap[event]
+  if func then
+    func(combatMessage)
   end
-
-
-
- -- Outgoing Melee Hits/Crits, Environmental Damage
- elseif (event == "CHAT_MSG_COMBAT_SELF_HITS") then
-  if (not MikCEH.ParseForEnvironmentalDamage(combatMessage)) then
-   MikCEH.ParseForOutgoingHits(combatMessage);
-  end
-
- -- Outgoing Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes, Evades
- elseif (event == "CHAT_MSG_COMBAT_SELF_MISSES") then
-  MikCEH.ParseForOutgoingMisses(combatMessage);
-
- -- Outgoing Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
- elseif (event == "CHAT_MSG_SPELL_SELF_DAMAGE") then
-  MikCEH.ParseForOutgoingSpellHitsAndMisses(combatMessage);
-
- -- Outgoing damage from shields
- elseif (event == "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF") then
-  MikCEH.ParseForOutgoingDamageShieldDamage(combatMessage);
-
- -- Outgoing Heals, Power Gains, Dispel/Purge Resists
- elseif (event == "CHAT_MSG_SPELL_SELF_BUFF") then
-  if (not MikCEH.ParseForPowerGains(combatMessage)) then
-   MikCEH.ParseForOutgoingSpellHeals(combatMessage);
-   MikCEH.ParseForOutgoingDispelResists(combatMessage);
-  end
-
- -- Outgoing HoTs
- elseif (event == "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS" or
-         event == "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS") then
-  MikCEH.ParseForOutgoingHoTs(combatMessage);
-
- -- Outgoing DoTs, Power Losses
- elseif (event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" or
-         event == "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE") then
-   MikCEH.ParseForOutgoingDoTs(combatMessage);
-   MikCEH.ParseForPowerLosses(combatMessage);
-
- -- Outgoing Pet Hits/Crits
- elseif (event == "CHAT_MSG_COMBAT_PET_HITS") then
-  MikCEH.ParseForOutgoingPetHits(combatMessage);
-
- -- Outgoing Pet Melee Misses
- elseif(event == "CHAT_MSG_COMBAT_PET_MISSES") then
-  MikCEH.ParseForOutgoingPetMisses(combatMessage);
-
- -- Outgoing Pet Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
- elseif(event == "CHAT_MSG_SPELL_PET_DAMAGE") then
-  MikCEH.ParseForOutgoingPetSpellHitsAndMisses(combatMessage);
- 
-
-
- -- Item Buffs
- elseif (event == "CHAT_MSG_SPELL_ITEM_ENCHANTMENTS") then
-  MikCEH.ParseForIncomingItemBuffs(combatMessage);
-
- -- Buff Fades
- elseif (event == "CHAT_MSG_SPELL_AURA_GONE_SELF") then
-  MikCEH.ParseForBuffFades(combatMessage);
-
- -- Honor Gains
- elseif (event == "CHAT_MSG_COMBAT_HONOR_GAIN") then
-  MikCEH.ParseForHonorGains(combatMessage);
-
- -- Reputation Gains/Losses
- elseif (event == "CHAT_MSG_COMBAT_FACTION_CHANGE") then
-  MikCEH.ParseForReputationGainsAndLosses(combatMessage);
-
- -- Skill Gains
- elseif (event == "CHAT_MSG_SKILL") then
-  MikCEH.ParseForSkillGains(combatMessage);
-
- -- Experience Gains
- elseif (event == "CHAT_MSG_COMBAT_XP_GAIN") then
-  MikCEH.ParseForExperienceGains(combatMessage);
-
- -- Killing Blows
- elseif (event == "CHAT_MSG_COMBAT_HOSTILE_DEATH") then
-  MikCEH.ParseForKillingBlows(combatMessage);
-
- end
 end
 
 
@@ -495,9 +326,127 @@ end
 -- Called when the helper is fully loaded.
 -- **********************************************************************************
 function MikCEH.Init()
- -- Get the name of the player and the player's class.
- playerName = UnitName("player");
- _, playerClass = UnitClass("player");
+  -- Get the name of the player and the player's class.
+  playerName = UnitName("player");
+  _, playerClass = UnitClass("player");
+  MikCEH.InitCombatEventMap();
+  MikCEH.InitOnEventMap();
+end
+
+-- *****************************************************************************
+-- Builds a lookup table for combat log events to minimize string comparisons.
+-- *****************************************************************************
+function MikCEH.InitCombatEventMap()
+  local assign = function(events, func)
+    for _, e in ipairs(events) do
+      combatEventMap[e] = func
+    end
+  end
+
+  local function incomingSpellDamage(msg)
+    MikCEH.ParseForIncomingSpellHitsAndMisses(msg)
+    MikCEH.ParseForPowerLosses(msg)
+  end
+
+  local function periodicSelfBuffs(msg)
+    if (not MikCEH.ParseForIncomingSpellHeals(msg)) then
+      MikCEH.ParseForIncomingBuffs(msg)
+      MikCEH.ParseForOutgoingHoTs(msg)
+    end
+  end
+
+  local function selfHits(msg)
+    if (not MikCEH.ParseForEnvironmentalDamage(msg)) then
+      MikCEH.ParseForOutgoingHits(msg)
+    end
+  end
+
+  local function selfBuff(msg)
+    if (not MikCEH.ParseForPowerGains(msg)) then
+      MikCEH.ParseForOutgoingSpellHeals(msg)
+      MikCEH.ParseForOutgoingDispelResists(msg)
+    end
+  end
+
+  local function outgoingDoTs(msg)
+    MikCEH.ParseForOutgoingDoTs(msg)
+    MikCEH.ParseForPowerLosses(msg)
+  end
+
+  assign({"CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS", "CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS", "CHAT_MSG_COMBAT_PARTY_HITS"}, MikCEH.ParseForIncomingHits)
+  assign({"CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES", "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES", "CHAT_MSG_COMBAT_PARTY_MISSES"}, MikCEH.ParseForIncomingMisses)
+  assign({"CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE", "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE", "CHAT_MSG_SPELL_PARTY_DAMAGE"}, incomingSpellDamage)
+  assign({"CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS"}, MikCEH.ParseForIncomingDamageShieldDamage)
+  assign({"CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF", "CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF"}, MikCEH.ParseForIncomingSpellHeals)
+  assign({"CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE"}, function(msg) MikCEH.ParseForIncomingDebuffs(msg); MikCEH.ParseForPowerGains(msg); end)
+  assign({"CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS"}, periodicSelfBuffs)
+  assign({"CHAT_MSG_COMBAT_SELF_HITS"}, selfHits)
+  assign({"CHAT_MSG_COMBAT_SELF_MISSES"}, MikCEH.ParseForOutgoingMisses)
+  assign({"CHAT_MSG_SPELL_SELF_DAMAGE"}, MikCEH.ParseForOutgoingSpellHitsAndMisses)
+  assign({"CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF"}, MikCEH.ParseForOutgoingDamageShieldDamage)
+  assign({"CHAT_MSG_SPELL_SELF_BUFF"}, selfBuff)
+  assign({"CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS", "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS"}, MikCEH.ParseForOutgoingHoTs)
+  assign({"CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE", "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE"}, outgoingDoTs)
+  assign({"CHAT_MSG_COMBAT_PET_HITS"}, MikCEH.ParseForOutgoingPetHits)
+  assign({"CHAT_MSG_COMBAT_PET_MISSES"}, MikCEH.ParseForOutgoingPetMisses)
+  assign({"CHAT_MSG_SPELL_PET_DAMAGE"}, MikCEH.ParseForOutgoingPetSpellHitsAndMisses)
+  assign({"CHAT_MSG_SPELL_ITEM_ENCHANTMENTS"}, MikCEH.ParseForIncomingItemBuffs)
+  assign({"CHAT_MSG_SPELL_AURA_GONE_SELF"}, MikCEH.ParseForBuffFades)
+  assign({"CHAT_MSG_COMBAT_HONOR_GAIN"}, MikCEH.ParseForHonorGains)
+  assign({"CHAT_MSG_COMBAT_FACTION_CHANGE"}, MikCEH.ParseForReputationGainsAndLosses)
+  assign({"CHAT_MSG_SKILL"}, MikCEH.ParseForSkillGains)
+  assign({"CHAT_MSG_COMBAT_XP_GAIN"}, MikCEH.ParseForExperienceGains)
+  assign({"CHAT_MSG_COMBAT_HOSTILE_DEATH"}, MikCEH.ParseForKillingBlows)
+end
+
+-- Build a lookup table for non-chat events handled in OnEvent.
+function MikCEH.InitOnEventMap()
+  onEventMap.PLAYER_REGEN_ENABLED = function()
+    local data = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_COMBAT_LEAVE, nil, nil)
+    MikCEH.SendEvent(data)
+  end
+
+  onEventMap.PLAYER_REGEN_DISABLED = function()
+    local data = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_COMBAT_ENTER, nil, nil)
+    MikCEH.SendEvent(data)
+  end
+
+  onEventMap.PLAYER_COMBO_POINTS = function()
+    local numCP = GetComboPoints()
+    if numCP ~= 0 then
+      local data = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_CP_GAIN, numCP, nil)
+      MikCEH.SendEvent(data)
+    end
+  end
+
+  onEventMap.UNIT_HEALTH = function()
+    if arg1 == "player" then
+      MikCEH.ParseSelfHealthTriggers()
+    elseif arg1 == "target" then
+      if not UnitIsFriend("player", "target") then
+        MikCEH.ParseEnemyHealthTriggers()
+      else
+        MikCEH.ParseFriendlyHealthTriggers()
+      end
+    elseif arg1 == "pet" then
+      MikCEH.ParsePetHealthTriggers()
+    end
+  end
+
+  onEventMap.UNIT_MANA = function()
+    if arg1 == "player" then
+      MikCEH.ParseSelfManaTriggers()
+    end
+  end
+
+  onEventMap.PLAYER_TARGET_CHANGED = function()
+    if UnitExists("target") and UnitIsPlayer("target") and not UnitIsFriend("player", "target") then
+      local name = UnitName("target")
+      if name then
+        recentlySelectedPlayers[name] = 0
+      end
+    end
+  end
 end
 
 
@@ -585,7 +534,7 @@ function MikCEH.ParseForIncomingHits(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "COMBATHITOTHEROTHER", {"%n", "%s", "%a"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_HIT, MikCEH.HITTYPE_NORMAL, MikCEH.DAMAGETYPE_PHYSICAL, capturedData.Amount, nil, capturedData.Name);
 
   -- Look for any partial actions and populate them into the event data.
@@ -602,7 +551,7 @@ function MikCEH.ParseForIncomingHits(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "COMBATHITCRITOTHEROTHER", {"%n", "%s", "%a"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_HIT, MikCEH.HITTYPE_CRIT, MikCEH.DAMAGETYPE_PHYSICAL, capturedData.Amount, nil, capturedData.Name);
 
   -- Look for any partial actions and populate them into the event data.
@@ -712,7 +661,7 @@ function MikCEH.ParseForIncomingMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "MISSEDOTHEROTHER", {"%n", "%s"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_MISS, nil, nil, nil, nil, capturedData.Name);
 
   -- Send the event.
@@ -726,7 +675,7 @@ function MikCEH.ParseForIncomingMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "VSDODGEOTHEROTHER", {"%n", "%s"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_DODGE, nil, nil, nil, nil, capturedData.Name);
 
   -- Send the event.
@@ -740,7 +689,7 @@ function MikCEH.ParseForIncomingMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "VSPARRYOTHEROTHER", {"%n", "%s"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_PARRY, nil, nil, nil, nil, capturedData.Name);
 
   -- Send the event.
@@ -754,7 +703,7 @@ function MikCEH.ParseForIncomingMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "VSBLOCKOTHEROTHER", {"%n", "%s"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_BLOCK, nil, nil, nil, nil, capturedData.Name);
 
   -- Send the event.
@@ -768,7 +717,7 @@ function MikCEH.ParseForIncomingMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "VSABSORBOTHEROTHER", {"%n", "%s"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_ABSORB, nil, nil, nil, nil, capturedData.Name);
 
   -- Send the event.
@@ -782,7 +731,7 @@ function MikCEH.ParseForIncomingMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "VSIMMUNEOTHEROTHER", {"%n", "%s"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_IMMUNE, nil, nil, nil, nil, capturedData.Name);
 
   -- Send the event.
@@ -995,7 +944,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLLOGOTHEROTHER", {"%n", "%s", "%c", "%a"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_HIT, MikCEH.HITTYPE_NORMAL, MikCEH.DAMAGETYPE_PHYSICAL, capturedData.Amount, capturedData.SpellName, capturedData.Name);
 
   -- Look for any partial actions and populate them into the event data.
@@ -1013,7 +962,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLLOGCRITOTHEROTHER", {"%n", "%s", "%a"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_HIT, MikCEH.HITTYPE_CRIT, MikCEH.DAMAGETYPE_PHYSICAL, capturedData.Amount, capturedData.SpellName, capturedData.Name);
 
   -- Look for any partial actions and populate them into the event data.
@@ -1031,7 +980,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLLOGSCHOOLOTHEROTHER", {"%n", "%s", "%c", "%a", "%t"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_HIT, MikCEH.HITTYPE_NORMAL, capturedData.DamageType, capturedData.Amount, capturedData.SpellName, capturedData.Name);
 
   -- Look for any partial actions and populate them into the event data.
@@ -1049,7 +998,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLLOGCRITSCHOOLOTHEROTHER", {"%n", "%s", "%c", "%a", "%t"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_HIT, MikCEH.HITTYPE_CRIT, capturedData.DamageType, capturedData.Amount, capturedData.SpellName, capturedData.Name);
 
   -- Look for any partial actions and populate them into the event data.
@@ -1067,7 +1016,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLMISSOTHEROTHER", {"%n", "%s", "%c"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_MISS, nil, nil, nil, capturedData.SpellName, capturedData.Name);
 
   -- Send the event.
@@ -1082,7 +1031,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLDODGEDOTHEROTHER", {"%c", "%n", "%s"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_DODGE, nil, nil, nil, capturedData.SpellName, capturedData.Name);
 
   -- Send the event.
@@ -1097,7 +1046,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLPARRIEDOTHEROTHER", {"%c", "%n", "%s"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_PARRY, nil, nil, nil, capturedData.SpellName, capturedData.Name);
 
   -- Send the event.
@@ -1112,7 +1061,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLBLOCKEDOTHEROTHER", {"%c", "%s", "%n"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_BLOCK, nil, nil, nil, capturedData.SpellName, capturedData.Name);
 
   -- Send the event.
@@ -1127,7 +1076,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLRESISTOTHEROTHER", {"%n", "%s", "%c"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_RESIST, nil, nil, nil, capturedData.SpellName, capturedData.Name);
 
   -- Send the event.
@@ -1142,7 +1091,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLLOGABSORBOTHEROTHER", {"%n", "%s", "%c"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_ABSORB, nil, nil, nil, capturedData.SpellName, capturedData.Name);
 
   -- Send the event.
@@ -1157,7 +1106,7 @@ function MikCEH.ParseForIncomingSpellHitsAndMisses(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "SPELLIMMUNEOTHEROTHER", {"%n", "%s", "%c"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetDamageEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.ACTIONTYPE_IMMUNE, nil, nil, nil, capturedData.SpellName, capturedData.Name);
 
   -- Send the event.
@@ -1400,7 +1349,7 @@ function MikCEH.ParseForIncomingSpellHeals(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "HEALEDCRITOTHEROTHER", {"%n", "%s", "%c", "%a"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetHealEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.HEALTYPE_CRIT, capturedData.Amount, capturedData.SpellName, capturedData.Name);
 
   -- Get overheal info.
@@ -1419,7 +1368,7 @@ function MikCEH.ParseForIncomingSpellHeals(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "HEALEDOTHEROTHER", {"%n", "%s", "%c", "%a"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetHealEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.HEALTYPE_NORMAL, capturedData.Amount, capturedData.SpellName, capturedData.Name);
 
   -- Get overheal info.
@@ -1439,7 +1388,7 @@ function MikCEH.ParseForIncomingSpellHeals(combatMessage)
  local capturedData = MikCEH.GetCapturedData(combatMessage, "PERIODICAURAHEALOTHEROTHER", {"%c", "%a", "%n", "%s"});
 
  -- If a match was found.
- if (capturedData ~= nil and UnitName("pet") and string.find(combatMessage, UnitName("pet"))) then
+ if (capturedData ~= nil and PetNameInMessage(combatMessage)) then
   local eventData = MikCEH.GetHealEventData(MikCEH.DIRECTIONTYPE_PET_INCOMING, MikCEH.HEALTYPE_OVER_TIME, capturedData.Amount, capturedData.SpellName, capturedData.Name);
 
   -- Get overheal info.
@@ -3447,18 +3396,24 @@ end
 -- parameters passed.
 -- **********************************************************************************
 function MikCEH.GetUnorderedCaptureDataTable(c1, c2, c3, c4, c5, c6, c7, c8, c9)
- -- Erase old unorderd capture data.
- MikCEH.EraseTable(unorderedCaptureData);
+  -- Populate the capture array without wiping it each call.
+  local idx = 1
+  if (c1 ~= nil) then unorderedCaptureData[idx] = c1; idx = idx + 1 end
+  if (c2 ~= nil) then unorderedCaptureData[idx] = c2; idx = idx + 1 end
+  if (c3 ~= nil) then unorderedCaptureData[idx] = c3; idx = idx + 1 end
+  if (c4 ~= nil) then unorderedCaptureData[idx] = c4; idx = idx + 1 end
+  if (c5 ~= nil) then unorderedCaptureData[idx] = c5; idx = idx + 1 end
+  if (c6 ~= nil) then unorderedCaptureData[idx] = c6; idx = idx + 1 end
+  if (c7 ~= nil) then unorderedCaptureData[idx] = c7; idx = idx + 1 end
+  if (c8 ~= nil) then unorderedCaptureData[idx] = c8; idx = idx + 1 end
+  if (c9 ~= nil) then unorderedCaptureData[idx] = c9; idx = idx + 1 end
 
- if (c1 ~= nil) then table.insert(unorderedCaptureData, c1); end
- if (c2 ~= nil) then table.insert(unorderedCaptureData, c2); end
- if (c3 ~= nil) then table.insert(unorderedCaptureData, c3); end
- if (c4 ~= nil) then table.insert(unorderedCaptureData, c4); end
- if (c5 ~= nil) then table.insert(unorderedCaptureData, c5); end
- if (c6 ~= nil) then table.insert(unorderedCaptureData, c6); end
- if (c7 ~= nil) then table.insert(unorderedCaptureData, c7); end
- if (c8 ~= nil) then table.insert(unorderedCaptureData, c8); end
- if (c9 ~= nil) then table.insert(unorderedCaptureData, c9); end
+  -- Clear any leftover values from a previous call.
+  local count = tgetn(unorderedCaptureData)
+  for i = idx, count do
+    unorderedCaptureData[i] = nil
+  end
+  tsetn(unorderedCaptureData, idx - 1)
 
  -- Return the populated unordered capture data table.
  return unorderedCaptureData;
@@ -3515,7 +3470,28 @@ function MikCEH.GetDamageTypeString(damageType)
  end
 
  -- Return the unknown damage type string.
- return UNKNOWN;
+
+  return UNKNOWN;
+end
+
+-- Utility to quickly reset the shared combat event data table without iteration.
+local function ClearCombatEventData()
+  local data = MikCEH.CombatEventData
+  data.ActionType = nil
+  data.Amount = nil
+  data.CapturedData = nil
+  data.DamageType = nil
+  data.DirectionType = nil
+  data.EffectName = nil
+  data.EventType = nil
+  data.HealType = nil
+  data.HitType = nil
+  data.Name = nil
+  data.NotificationType = nil
+  data.NumCaptures = nil
+  data.PartialActionType = nil
+  data.PartialAmount = nil
+  data.TriggerKey = nil
 end
 
 
@@ -3526,8 +3502,8 @@ function MikCEH.GetDamageEventData(directionType, actionType, hitType, damageTyp
  -- Get the global combat event data table.
  local eventData = MikCEH.CombatEventData;
 
- -- Erase the combat event data table.
- MikCEH.EraseTable(eventData);
+  -- Reset the combat event data table.
+  ClearCombatEventData();
 
 
  -- Populate the event data fields.
@@ -3552,8 +3528,8 @@ function MikCEH.GetHealEventData(directionType, healType, amount, effectName, na
  -- Get the global combat event data table.
  local eventData = MikCEH.CombatEventData;
 
- -- Erase the combat event data table.
- MikCEH.EraseTable(eventData);
+  -- Reset the combat event data table.
+  ClearCombatEventData();
 
  -- Populate the event data fields.
  eventData.EventType = MikCEH.EVENTTYPE_HEAL;
@@ -3576,8 +3552,8 @@ function MikCEH.GetNotificationEventData(notificationType, amount, effectName, S
  -- Get the global combat event data table.
  local eventData = MikCEH.CombatEventData;
 
- -- Erase the combat event data table.
- MikCEH.EraseTable(eventData);
+  -- Reset the combat event data table.
+  ClearCombatEventData();
 
  -- Populate the event data fields.
  eventData.EventType = MikCEH.EVENTTYPE_NOTIFICATION;
