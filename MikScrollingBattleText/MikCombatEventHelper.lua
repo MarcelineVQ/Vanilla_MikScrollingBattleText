@@ -163,6 +163,7 @@ local elapsedTime = 0;
 
 -- Map combat log events to their parsing functions.
 local combatEventMap = {}
+local onEventMap = {}
 
 -- Locally cache frequently used functions to minimize global lookups.
 local strfind, strgfind = string.find, string.gfind
@@ -240,84 +241,21 @@ function MikCEH.OnLoad()
  tinsert(listenEvents, "CHAT_MSG_SPELL_PET_DAMAGE");				-- Outgoing Pet Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
 
  tinsert(listenEvents, "CHAT_MSG_SPELL_ITEM_ENCHANTMENTS");			-- Item Buffs
- tinsert(listenEvents, "CHAT_MSG_SPELL_AURA_GONE_SELF");			-- Buff Fades
- tinsert(listenEvents, "CHAT_MSG_COMBAT_HONOR_GAIN");				-- Honor Gains
- tinsert(listenEvents, "CHAT_MSG_COMBAT_FACTION_CHANGE");			-- Reputation Gains/Losses
- tinsert(listenEvents, "CHAT_MSG_SKILL");						-- Skill Gains
- tinsert(listenEvents, "CHAT_MSG_COMBAT_XP_GAIN");				-- Experience Gains
- tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILE_DEATH");			-- Killing Blows
--- tinsert(listenEvents, "CHAT_MSG_SYSTEM");					-- Created Items
+  if event == "ADDON_LOADED" then
+    if arg1 == MikSBT.MOD_NAME then
+      this:UnregisterEvent("ADDON_LOADED")
+      MikCEH.RegisterEvents()
+      MikCEH.Init()
+    end
+    return
 
- tinsert(listenEvents, "PLAYER_REGEN_ENABLED");					-- Leave Combat
- tinsert(listenEvents, "PLAYER_REGEN_DISABLED");					-- Enter Combat
- tinsert(listenEvents, "PLAYER_COMBO_POINTS");					-- Combo Point Gains
- tinsert(listenEvents, "UNIT_HEALTH");						-- Health changes.
- tinsert(listenEvents, "UNIT_MANA");							-- Mana changes.
-
- tinsert(listenEvents, "PLAYER_TARGET_CHANGED");					-- Target changes.
-
- -- Register for the ADDON_LOADED event.
- MCEHEventFrame:RegisterEvent("ADDON_LOADED");
-end
-
-
--- **********************************************************************************
--- Called when the events the helper registered for occur.
--- **********************************************************************************
-function MikCEH.OnEvent()
- -- When an addon is loaded.
- if (event == "ADDON_LOADED") then
-  -- Make sure it's the right addon.
-  if (arg1 == MikSBT.MOD_NAME) then
-
-   -- Don't get notification for other addons being loaded.
-   this:UnregisterEvent("ADDON_LOADED");
-
-   -- Register for the events the helper is interested in receiving.
-   MikCEH.RegisterEvents();
-
-   -- Initialize the helper object.
-   MikCEH.Init();
-  end
-
- -- Leave Combat
- elseif (event == "PLAYER_REGEN_ENABLED") then
-  local eventData = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_COMBAT_LEAVE, nil, nil);
-
-  -- Send the event.
-  MikCEH.SendEvent(eventData);
-
- -- Enter Combat
- elseif (event == "PLAYER_REGEN_DISABLED") then
-  local eventData = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_COMBAT_ENTER, nil, nil);
-
-  -- Send the event.
-  MikCEH.SendEvent(eventData);
-
- -- Combo Point Gains
- elseif (event == "PLAYER_COMBO_POINTS") then
-  local numCP = GetComboPoints();
-
-  -- Make sure the number of combo points is more than one.
-  if (numCP ~= 0) then
-   local eventData = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_CP_GAIN, numCP, nil);
-
-   -- Send the event.
-   MikCEH.SendEvent(eventData);
-  end
-
- -- Health changes
- elseif (event == "UNIT_HEALTH") then
-  if (arg1 == "player") then
-   MikCEH.ParseSelfHealthTriggers();
-  elseif (arg1 == "target") then
-   -- Check if the target is an enemy.
-   if (not UnitIsFriend("player", "target")) then
-    MikCEH.ParseEnemyHealthTriggers();
-   -- Target is not an enemy.
-   else
-    MikCEH.ParseFriendlyHealthTriggers();
-   end
+  local handler = onEventMap[event]
+  if handler then
+    handler()
+  else
+    MikCEH.ParseSearchPatternTriggers(event, arg1)
+    MikCEH.ParseCombatEvents(event, arg1)
+  MikCEH.InitOnEventMap();
   elseif (arg1 == "pet") then
    MikCEH.ParsePetHealthTriggers();
   end
@@ -459,6 +397,56 @@ function MikCEH.InitCombatEventMap()
   assign({"CHAT_MSG_SKILL"}, MikCEH.ParseForSkillGains)
   assign({"CHAT_MSG_COMBAT_XP_GAIN"}, MikCEH.ParseForExperienceGains)
   assign({"CHAT_MSG_COMBAT_HOSTILE_DEATH"}, MikCEH.ParseForKillingBlows)
+end
+
+-- Build a lookup table for non-chat events handled in OnEvent.
+function MikCEH.InitOnEventMap()
+  onEventMap.PLAYER_REGEN_ENABLED = function()
+    local data = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_COMBAT_LEAVE, nil, nil)
+    MikCEH.SendEvent(data)
+  end
+
+  onEventMap.PLAYER_REGEN_DISABLED = function()
+    local data = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_COMBAT_ENTER, nil, nil)
+    MikCEH.SendEvent(data)
+  end
+
+  onEventMap.PLAYER_COMBO_POINTS = function()
+    local numCP = GetComboPoints()
+    if numCP ~= 0 then
+      local data = MikCEH.GetNotificationEventData(MikCEH.NOTIFICATIONTYPE_CP_GAIN, numCP, nil)
+      MikCEH.SendEvent(data)
+    end
+  end
+
+  onEventMap.UNIT_HEALTH = function()
+    if arg1 == "player" then
+      MikCEH.ParseSelfHealthTriggers()
+    elseif arg1 == "target" then
+      if not UnitIsFriend("player", "target") then
+        MikCEH.ParseEnemyHealthTriggers()
+      else
+        MikCEH.ParseFriendlyHealthTriggers()
+      end
+    elseif arg1 == "pet" then
+      MikCEH.ParsePetHealthTriggers()
+    end
+  end
+
+  onEventMap.UNIT_MANA = function()
+    if arg1 == "player" then
+      MikCEH.ParseSelfManaTriggers()
+    end
+  end
+
+  onEventMap.PLAYER_TARGET_CHANGED = function()
+    if UnitExists("target") and UnitIsPlayer("target") and not UnitIsFriend("player", "target") then
+      local name = UnitName("target")
+      if name then
+        recentlySelectedPlayers[name] = 0
+      end
+    end
+  end
 end
 
 
@@ -3482,7 +3470,28 @@ function MikCEH.GetDamageTypeString(damageType)
  end
 
  -- Return the unknown damage type string.
- return UNKNOWN;
+
+  return UNKNOWN;
+end
+
+-- Utility to quickly reset the shared combat event data table without iteration.
+local function ClearCombatEventData()
+  local data = MikCEH.CombatEventData
+  data.ActionType = nil
+  data.Amount = nil
+  data.CapturedData = nil
+  data.DamageType = nil
+  data.DirectionType = nil
+  data.EffectName = nil
+  data.EventType = nil
+  data.HealType = nil
+  data.HitType = nil
+  data.Name = nil
+  data.NotificationType = nil
+  data.NumCaptures = nil
+  data.PartialActionType = nil
+  data.PartialAmount = nil
+  data.TriggerKey = nil
 end
 
 
@@ -3493,8 +3502,8 @@ function MikCEH.GetDamageEventData(directionType, actionType, hitType, damageTyp
  -- Get the global combat event data table.
  local eventData = MikCEH.CombatEventData;
 
- -- Erase the combat event data table.
- MikCEH.EraseTable(eventData);
+  -- Reset the combat event data table.
+  ClearCombatEventData();
 
 
  -- Populate the event data fields.
@@ -3519,8 +3528,8 @@ function MikCEH.GetHealEventData(directionType, healType, amount, effectName, na
  -- Get the global combat event data table.
  local eventData = MikCEH.CombatEventData;
 
- -- Erase the combat event data table.
- MikCEH.EraseTable(eventData);
+  -- Reset the combat event data table.
+  ClearCombatEventData();
 
  -- Populate the event data fields.
  eventData.EventType = MikCEH.EVENTTYPE_HEAL;
@@ -3543,8 +3552,8 @@ function MikCEH.GetNotificationEventData(notificationType, amount, effectName, S
  -- Get the global combat event data table.
  local eventData = MikCEH.CombatEventData;
 
- -- Erase the combat event data table.
- MikCEH.EraseTable(eventData);
+  -- Reset the combat event data table.
+  ClearCombatEventData();
 
  -- Populate the event data fields.
  eventData.EventType = MikCEH.EVENTTYPE_NOTIFICATION;
