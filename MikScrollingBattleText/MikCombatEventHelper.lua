@@ -209,52 +209,52 @@ end
 -- **********************************************************************************
 function MikCEH.OnLoad()
  -- Load up the listen events table with the events the helper is interested in.
- table.insert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS");		-- Incoming Melee Hits/Crits
- table.insert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS");		-- Incoming Melee Hits/Crits
- table.insert(listenEvents, "CHAT_MSG_COMBAT_PARTY_HITS");				-- Incoming Melee Hits/Crits 
- table.insert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES"); 	-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
- table.insert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES");		-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
- table.insert(listenEvents, "CHAT_MSG_COMBAT_PARTY_MISSES");			-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
- table.insert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
- table.insert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses -- athenne add
- table.insert(listenEvents, "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
- table.insert(listenEvents, "CHAT_MSG_SPELL_PARTY_DAMAGE");				-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
- table.insert(listenEvents, "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS");		-- Incoming damage from shields
- table.insert(listenEvents, "CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF");			-- Incoming Heals
- table.insert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF");		-- Incoming Heals
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");		-- Incoming Debuffs, DoTs, Power Gains
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS");		-- Incoming Buffs, HoTs, Power Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS");		-- Incoming Melee Hits/Crits
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS");		-- Incoming Melee Hits/Crits
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_PARTY_HITS");				-- Incoming Melee Hits/Crits
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_CREATURE_VS_SELF_MISSES"); 	-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILEPLAYER_MISSES");		-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_PARTY_MISSES");			-- Incoming Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes
+ tinsert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
+ tinsert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses -- athenne add
+ tinsert(listenEvents, "CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE");		-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PARTY_DAMAGE");				-- Incoming Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Power Losses
+ tinsert(listenEvents, "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS");		-- Incoming damage from shields
+ tinsert(listenEvents, "CHAT_MSG_SPELL_HOSTILEPLAYER_BUFF");			-- Incoming Heals
+ tinsert(listenEvents, "CHAT_MSG_SPELL_CREATURE_VS_SELF_BUFF");		-- Incoming Heals
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");		-- Incoming Debuffs, DoTs, Power Gains
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_SELF_BUFFS");		-- Incoming Buffs, HoTs, Power Gains
 
- table.insert(listenEvents, "CHAT_MSG_COMBAT_SELF_HITS");				-- Outgoing Melee Hits/Crits, Environmental Damage
- table.insert(listenEvents, "CHAT_MSG_COMBAT_SELF_MISSES");  			-- Outgoing Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes, Evades
- table.insert(listenEvents, "CHAT_MSG_SPELL_SELF_DAMAGE");				-- Outgoing Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
- table.insert(listenEvents, "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF");		-- Outgoing damage from shields
- table.insert(listenEvents, "CHAT_MSG_SPELL_SELF_BUFF");				-- Outgoing Heals, Power Gains, Dispel/Purge Resists
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS");	-- Outgoing HoTs
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS");		-- Outgoing HoTs
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS");
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE");		-- Outgoing DoTs
- table.insert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE");	-- Outgoing DoTs, Power Losses
- table.insert(listenEvents, "CHAT_MSG_COMBAT_PET_HITS");				-- Outgoing Pet Melee Hits/Crits
- table.insert(listenEvents, "CHAT_MSG_COMBAT_PET_MISSES");				-- Outgoing Pet Melee Misses
- table.insert(listenEvents, "CHAT_MSG_SPELL_PET_DAMAGE");				-- Outgoing Pet Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_SELF_HITS");				-- Outgoing Melee Hits/Crits, Environmental Damage
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_SELF_MISSES");  			-- Outgoing Melee Misses, Dodges, Parries, Blocks, Absorbs, Immunes, Evades
+ tinsert(listenEvents, "CHAT_MSG_SPELL_SELF_DAMAGE");				-- Outgoing Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
+ tinsert(listenEvents, "CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF");		-- Outgoing damage from shields
+ tinsert(listenEvents, "CHAT_MSG_SPELL_SELF_BUFF");				-- Outgoing Heals, Power Gains, Dispel/Purge Resists
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_BUFFS");	-- Outgoing HoTs
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_PARTY_BUFFS");		-- Outgoing HoTs
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_CREATURE_BUFFS");
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE");		-- Outgoing DoTs
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE");	-- Outgoing DoTs, Power Losses
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_PET_HITS");				-- Outgoing Pet Melee Hits/Crits
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_PET_MISSES");				-- Outgoing Pet Melee Misses
+ tinsert(listenEvents, "CHAT_MSG_SPELL_PET_DAMAGE");				-- Outgoing Pet Spell/Ability Damage, Misses, Dodges, Parries, Blocks, Absorbs, Resists, Immunes, Evades
 
- table.insert(listenEvents, "CHAT_MSG_SPELL_ITEM_ENCHANTMENTS");			-- Item Buffs
- table.insert(listenEvents, "CHAT_MSG_SPELL_AURA_GONE_SELF");			-- Buff Fades
- table.insert(listenEvents, "CHAT_MSG_COMBAT_HONOR_GAIN");				-- Honor Gains
- table.insert(listenEvents, "CHAT_MSG_COMBAT_FACTION_CHANGE");			-- Reputation Gains/Losses
- table.insert(listenEvents, "CHAT_MSG_SKILL");						-- Skill Gains
- table.insert(listenEvents, "CHAT_MSG_COMBAT_XP_GAIN");				-- Experience Gains
- table.insert(listenEvents, "CHAT_MSG_COMBAT_HOSTILE_DEATH");			-- Killing Blows
--- table.insert(listenEvents, "CHAT_MSG_SYSTEM");					-- Created Items
+ tinsert(listenEvents, "CHAT_MSG_SPELL_ITEM_ENCHANTMENTS");			-- Item Buffs
+ tinsert(listenEvents, "CHAT_MSG_SPELL_AURA_GONE_SELF");			-- Buff Fades
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HONOR_GAIN");				-- Honor Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_FACTION_CHANGE");			-- Reputation Gains/Losses
+ tinsert(listenEvents, "CHAT_MSG_SKILL");						-- Skill Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_XP_GAIN");				-- Experience Gains
+ tinsert(listenEvents, "CHAT_MSG_COMBAT_HOSTILE_DEATH");			-- Killing Blows
+-- tinsert(listenEvents, "CHAT_MSG_SYSTEM");					-- Created Items
 
- table.insert(listenEvents, "PLAYER_REGEN_ENABLED");					-- Leave Combat
- table.insert(listenEvents, "PLAYER_REGEN_DISABLED");					-- Enter Combat
- table.insert(listenEvents, "PLAYER_COMBO_POINTS");					-- Combo Point Gains
- table.insert(listenEvents, "UNIT_HEALTH");						-- Health changes.
- table.insert(listenEvents, "UNIT_MANA");							-- Mana changes.
+ tinsert(listenEvents, "PLAYER_REGEN_ENABLED");					-- Leave Combat
+ tinsert(listenEvents, "PLAYER_REGEN_DISABLED");					-- Enter Combat
+ tinsert(listenEvents, "PLAYER_COMBO_POINTS");					-- Combo Point Gains
+ tinsert(listenEvents, "UNIT_HEALTH");						-- Health changes.
+ tinsert(listenEvents, "UNIT_MANA");							-- Mana changes.
 
- table.insert(listenEvents, "PLAYER_TARGET_CHANGED");					-- Target changes.
+ tinsert(listenEvents, "PLAYER_TARGET_CHANGED");					-- Target changes.
 
  -- Register for the ADDON_LOADED event.
  MCEHEventFrame:RegisterEvent("ADDON_LOADED");
@@ -3251,7 +3251,7 @@ function MikCEH.GetGlobalStringInfo(globalStringName)
      formatCode = currentChar;
     else
      -- Check if the character is one of the magic characters and escape it.
-     if (string.find(currentChar, "[%^%$%(%)%.%[%]%*%-%+%?]")) then
+     if (strfind(currentChar, "[%^%$%(%)%.%[%]%*%-%+%?]")) then
 	searchString = searchString .. "%" .. currentChar;
      -- Normal character so just add it to the formatted string.
      else
@@ -3273,11 +3273,11 @@ function MikCEH.GetGlobalStringInfo(globalStringName)
      formatCode = nil;
 
     -- Check if it's a digit, a period, or a $ and do nothing so we loop to the next character in the format code.
-    elseif (string.find(currentChar, "[%$%.%d]")) then
+    elseif (strfind(currentChar, "[%$%.%d]")) then
      -- Do nothing.
 
     -- Check for one of the types that need a string.
-    elseif (string.find(currentChar, "[cEefgGiouXxqs]")) then
+    elseif (strfind(currentChar, "[cEefgGiouXxqs]")) then
      -- Replace the format code with lua capture string syntax.
      if GetLocale() == "zhCN" and globalStringName == "HEALEDSELFOTHER" then -- edge for outgoing heals on others case for zhCN client
       searchString = searchString .. "([^0-9.]+)"
@@ -3289,7 +3289,7 @@ function MikCEH.GetGlobalStringInfo(globalStringName)
      argumentNumber = argumentNumber + 1;
 
      -- Check if there is an argument position specified.
-     local _, _, argumentPosition = string.find(formatCode, "(%d+)%$");
+     local _, _, argumentPosition = strfind(formatCode, "(%d+)%$");
      if (argumentPosition) then
       argumentOrder[argumentNumber] = tonumber(argumentPosition);
      else
@@ -3308,7 +3308,7 @@ function MikCEH.GetGlobalStringInfo(globalStringName)
      argumentNumber = argumentNumber + 1;
 
      -- Check if there is an argument position specified.
-     local _, _, argumentPosition = string.find(formatCode, "(%d+)%$");
+     local _, _, argumentPosition = strfind(formatCode, "(%d+)%$");
      if (argumentPosition) then
       argumentOrder[argumentNumber] = tonumber(argumentPosition);
      else
@@ -3366,10 +3366,10 @@ function MikCEH.GetCapturedData(combatMessage, globalStringName, captureOrder)
  MikCEH.EraseTable(orderedCaptureData);
 
  -- Get the unordered capture data.
- local tempCapturedData = MikCEH.GetUnorderedCaptureDataTable(string.gfind(combatMessage, globalStringInfo.Search)());
+ local tempCapturedData = MikCEH.GetUnorderedCaptureDataTable(strgfind(combatMessage, globalStringInfo.Search)());
 
  -- If a match was found.
- if (table.getn(tempCapturedData) ~= 0) then
+ if (tgetn(tempCapturedData) ~= 0) then
   -- Loop through all of the values in the passed capture order table.
   for argNum, substituteValue in captureOrder do
    local captureString = tempCapturedData[globalStringInfo.ArgumentOrder[argNum]];
@@ -3421,10 +3421,10 @@ function MikCEH.GetUnorderedCaptureDataTable(c1, c2, c3, c4, c5, c6, c7, c8, c9)
   if (c9 ~= nil) then unorderedCaptureData[idx] = c9; idx = idx + 1 end
 
   -- Clear any leftover values from a previous call.
-  local count = tgetn(unorderedCaptureData)
-  for i = idx, count do
-    unorderedCaptureData[i] = nil
-  end
+  -- local count = tgetn(unorderedCaptureData)
+  -- for i = idx, count do
+    -- unorderedCaptureData[i] = nil
+  -- end
   tsetn(unorderedCaptureData, idx - 1)
 
  -- Return the populated unordered capture data table.
@@ -3671,7 +3671,7 @@ function MikCEH.EraseTable(t)
  end
 
  -- Set the length of the table to 0.
- table.setn(t, 0);
+ tsetn(t, 0);
 end
 
 
@@ -3724,7 +3724,7 @@ function MikCEH.GetSearchTriggerEventData(triggerKey, capturedData)
 
  -- Populate the trigger event data fields.
  eventData.TriggerKey = triggerKey;
- eventData.NumCaptures = table.getn(capturedData);
+ eventData.NumCaptures = tgetn(capturedData);
 
  -- Loop through each captured data entry and set a corresponding field in
  -- the trigger event.
@@ -3958,7 +3958,7 @@ function MikCEH.ParseSearchPatternTriggers(event, combatMessage)
  -- Check if event search mode is enabled.
  if (searchMode) then
   -- Check if the pattern is in the combat message.
-  if (string.find(combatMessage, searchModePattern)) then
+  if (strfind(combatMessage, searchModePattern)) then
    -- Print out the event type and the combat message.
    MikSBT.Print(event .. " - " .. combatMessage, 0, 1, 0);
   end
@@ -3984,10 +3984,10 @@ function MikCEH.ParseSearchPatternTriggers(event, combatMessage)
    end
 
    -- Get capture data.
-   local capturedData = MikCEH.GetUnorderedCaptureDataTable(string.gfind(combatMessage, searchPattern)());
+   local capturedData = MikCEH.GetUnorderedCaptureDataTable(strgfind(combatMessage, searchPattern)());
 
    -- Check if a match was found. 
-   if (table.getn(capturedData) ~= 0) then
+   if (tgetn(capturedData) ~= 0) then
     -- Get trigger event data and call the trigger handler.
     local eventData = MikCEH.GetSearchTriggerEventData(triggerKey, capturedData);
     MikCEH.SendTriggerEvent(eventData);
